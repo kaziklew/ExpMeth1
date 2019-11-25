@@ -1,0 +1,109 @@
+---
+title: "Portfolio 4"
+author: "Kazik"
+date: "11/20/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+#knitr::opts_chunk$set(echo = TRUE)
+
+pacman::p_load(tidyverse, pastecs, WRS2, LSAfun, stringrm, multcomp, MuMIn)
+
+
+rm(df)
+library(readr)
+df <- read_csv("WHO_suicide_statistics.csv")
+
+bartlett.test(suicides_no ~ age, df)
+
+by(df$suicides_no, df$age, mean)
+res.aov <-  aov(suicides_no ~ age, data = df)
+summary(res.aov)
+df$age <- as.factor(df$age)
+summary(glht(aov(suicides_no ~ age, data = df), linfct = mcp(age = "Tukey")))
+        
+        
+ggplot(df, aes(x=age, y=suicides_no))+geom_boxplot(aes(color=age))+labs(x = "Age", y = "Number of Suicides")+ggtitle("Suicides from 1979-2016")
+
+```
+```{r}
+
+
+model_year <- lm(suicides_no ~ year, data = df)
+summary(model_year)
+
+
+ggplot(df, aes(year, suicides_no)) +
+  geom_point() +
+  stat_smooth(method = lm, se = FALSE)
+
+
+```
+
+
+```{r}
+
+df$suicide_prop <- ((df$suicides_no/df$population)*100000)
+
+model1 <- lm(suicide_prop ~ year + sex + age + country,  data = df)
+
+model2 <- lm(suicide_prop ~ year + sex + age,  data = df)
+model3 <- lm(suicide_prop ~ sex + age, data = df)
+model4 <- lm(suicide_prop ~ age, data = df)
+model5 <- lm(suicide_prop ~ sex, data = df)
+
+anova(model1,model2,model3,model4,model5)
+
+
+
+swag <- AIC(model1,model2,model3,model4,model5)
+#as we can see they are all pretty good, god damnt fabio why can't you just give us straight forward assignments
+
+Weights(swag)
+
+swoop <- BIC(model1,model2,model3,model4,model5)
+Weights(swoop)
+
+
+
+da_fucking_winner <- tibble( Model = c("model1", "model2", "model3", "model4", "model5"), AIC=swag$AIC, AIC_Weight = round(Weights(swag), 3), BIC=swoop$BIC, BIC_Weight = round(Weights(swoop),3) )
+
+#so there you have it kiddos, somehow it's fucking model 1 that wins the day, even though when you run the anva test comparing model1 with model 2 it gives a great p value which I thought meant it's all good in the ghood, but nope tricked ya the best model is the one that uses all of our predictors wtf...
+anova(model2, model1)
+anova(model1, model2)
+
+
+df$country <- as.factor(df$country)
+df$country <- as.numeric(df$country)
+df$sex <- as.factor(df$sex)
+df$sex <- as.numeric(df$sex)
+df$age <- as.factor(df$age)
+df$age <- as.numeric(df$age)
+
+
+df <- na.omit(df)
+
+library(ggplot2)
+library(reshape2)
+qplot(x = Var1, y = Var2,
+      data = melt(cor(df)),
+      fill = value,
+      geom = "tile") +
+  scale_fill_gradient2(limits = c(-1, 1))
+
+
+
+plot_df <- melt(cor(df))
+plot_df$value[plot_df$value < 0.2 & plot_df$value > - 0.2] = 0
+qplot(x=Var1, y=Var2, data=plot_df, fill=value, geom="tile") +
+   scale_fill_gradient2(limits=c(-1, 1))
+
+
+
+
+
+
+
+```
+
